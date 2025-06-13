@@ -7,10 +7,12 @@ using System.Text.RegularExpressions;
 public class EpubParser : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI text;
+    [SerializeField] private Book book; // Reference to your Book script
 
     private List<string> pages = new List<string>();
     private int currentPageIndex = 0;
     private bool bookLoaded = false;
+    private bool pageSide = false; // Alternate between true/false to flip back and forth
 
     void Start()
     {
@@ -27,12 +29,12 @@ public class EpubParser : MonoBehaviour
 
     private void LoadBook()
     {
-        EpubBook book = EpubReader.ReadBook("Assets/Epubs/pg1342-images-3.epub");
+        EpubBook bookData = EpubReader.ReadBook("Assets/Epubs/pg1342-images-3.epub");
 
         string fullText = "";
-        for (int i = 0; i < book.ReadingOrder.Count; i++)
+        for (int i = 0; i < bookData.ReadingOrder.Count; i++)
         {
-            fullText += StripHtml(book.ReadingOrder[i].Content) + "\n\n";
+            fullText += StripHtml(bookData.ReadingOrder[i].Content) + "\n\n";
         }
 
         StartCoroutine(Paginate(fullText));
@@ -45,12 +47,11 @@ public class EpubParser : MonoBehaviour
 
     private IEnumerator<WaitForEndOfFrame> Paginate(string fullText)
     {
-        // Temporarily hide and prepare for pagination
         text.text = "";
         yield return new WaitForEndOfFrame();
 
         int startIndex = 0;
-        int chunkSize = 100; // Starting size for binary fit
+        int chunkSize = 100;
 
         while (startIndex < fullText.Length)
         {
@@ -80,7 +81,7 @@ public class EpubParser : MonoBehaviour
             text.ForceMeshUpdate();
             var info = text.textInfo;
 
-            if (info.lineCount < text.maxVisibleLines && text.isTextOverflowing == false)
+            if (info.lineCount < text.maxVisibleLines && !text.isTextOverflowing)
             {
                 bestFit = mid;
                 low = mid + 1;
@@ -100,6 +101,10 @@ public class EpubParser : MonoBehaviour
         {
             currentPageIndex++;
             text.text = pages[currentPageIndex];
+
+            // Trigger page animation but alternate between two states
+            book.TurnPage(pageSide ? -1 : 1);
+            pageSide = !pageSide;
         }
     }
 }
